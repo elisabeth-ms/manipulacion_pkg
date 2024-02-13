@@ -901,8 +901,9 @@ class DetectorColisionesGripperFlotante:
         q = pin.SE3ToXYZQUAT(transformation)  # Convierte SE3 a un vector compatible con Pinocchio
         
         for i in range(len(self.obstaculos)):
-          new_values = np.array([self.obstaculos[i].pose[0], self.obstaculos[i].pose[1], self.obstaculos[i].pose[2],
-                               self.obstaculos[i].pose[3], self.obstaculos[i].pose[4], self.obstaculos[i].pose[5], self.obstaculos[i].pose[6]])
+          # new_values = np.array([self.obstaculos[i].pose[0], self.obstaculos[i].pose[1], self.obstaculos[i].pose[2],
+                              #  self.obstaculos[i].pose[3], self.obstaculos[i].pose[4], self.obstaculos[i].pose[5], self.obstaculos[i].pose[6]])
+          new_values = np.array([0,0,0, 1,0,0,0])
           q = np.concatenate((q, new_values))
         
         
