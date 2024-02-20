@@ -35,6 +35,28 @@ from gazebo_msgs.srv import SetModelState, GetModelState
 from gazebo_msgs.msg import ModelState
 import yaml
 
+def convert_kdl_frame_to_geometry_pose(kdl_frame):
+    # Convert the position (translation) from PyKDL Vector to geometry_msgs/Point
+    position = Point()
+    position.x = kdl_frame.p[0]
+    position.y = kdl_frame.p[1]
+    position.z = kdl_frame.p[2]
+
+    # Convert the orientation (rotation) from PyKDL Rotation to geometry_msgs/Quaternion
+    rotation = kdl_frame.M.GetQuaternion()  # This returns a tuple (x, y, z, w)
+    orientation = Quaternion()
+    orientation.x = rotation[0]
+    orientation.y = rotation[1]
+    orientation.z = rotation[2]
+    orientation.w = rotation[3]
+
+    # Create a geometry_msgs/Pose and assign the position and orientation
+    pose = Pose()
+    pose.position = position
+    pose.orientation = orientation
+
+    return pose
+
 def guardar_grasps_en_yaml(agarres, nombre_archivo):
     """
     Guarda los datos de los agarres en un archivo YAML.
@@ -102,7 +124,8 @@ def obtener_nombres_articulaciones_de_urdf():
     """
     descripcion_robot = rospy.get_param('/robot_description')
     robot = URDF.from_xml_string(descripcion_robot)
-    return [articulacion.name for articulacion in robot.joints if articulacion.type != 'fixed']
+    return [articulacion.name for articulacion in robot.joints if articulacion.type != 'fixed' 
+            and 'hand' not in articulacion.name]
 
 
 def frame_kdl_a_pose(frame):
@@ -213,7 +236,6 @@ def crear_marcador_flecha(marker_id: int, punto_inicio: Point, punto_final: Poin
 
     return marker
 
-
 class Robot:
     def __init__(self, nombres_articulaciones=None):
         """
@@ -274,6 +296,19 @@ class Robot:
                 return limite_inferior, limite_superior
         raise ValueError(f"Articulacion {nombre_articulacion} no encontrada")
     
+    def obtener_nombres_articulaciones(self):
+        return self.nombres_articulaciones
+    
+    def get_limites_inferiores(self):
+        return self.limites_inferiores
+    
+    def get_limites_superiores(self):
+        return self.limites_superiores
+
+
+
+class FakeRobot(Robot):
+    
     def fijar_posicion_articulaciones(self, pub_estados_articulaciones, posiciones_articulaciones):
         """
         Publica las posiciones actuales de las articulaciones del robot.
@@ -306,18 +341,77 @@ class Robot:
         Retorna una lista con los valores actuales de las posiciones de las articulaciones.
         """
         return self.posiciones_articulaciones
+
+class GazeboRobot(Robot):      
+    def __init__(self, nombres_articulaciones=None):
+        super().__init__(nombres_articulaciones=nombres_articulaciones)   
+        self.pub = rospy.Publisher('/eff_joint_traj_controller/command', JointTrajectory, queue_size=10)
     
-    def obtener_nombres_articulaciones(self):
-        return self.nombres_articulaciones
+    def obtener_posiciones_articulaciones(self):
+        message = rospy.wait_for_message("joint_states", JointState)
+      
+        # Filter and print positions of the joints of interest
+        ordered_positions = []
+      
+        # Loop through the list of joints of interest
+        for joint_name in self.nombres_articulaciones:
+          # Find the index of this joint in the received message
+          if joint_name in message.name:
+              index = message.name.index(joint_name)
+              # Append the corresponding position to the ordered list
+              ordered_positions.append(message.position[index])
+        # Return or use the joint_positions as needed
+        return ordered_positions
     
-    def get_limites_inferiores(self):
-        return self.limites_inferiores
-    
-    def get_limites_superiores(self):
-        return self.limites_superiores
+    def command_posicion_articulaciones(self, posicion_articulaciones, time_from_start):
+        trajectory_points = []
+        point = JointTrajectoryPoint()
+        point.positions = posicion_articulaciones
+        point.time_from_start = rospy.Duration(time_from_start)
+        trajectory_points.append(point)
+
+        # Create the trajectory message
+        trajectory = JointTrajectory()
+        trajectory.header.stamp = rospy.Time.now()
+        trajectory.joint_names = [
+            'shoulder_pan_joint',
+            'shoulder_lift_joint',
+            'elbow_joint', 
+            'wrist_1_joint',
+            'wrist_2_joint',
+            'wrist_3_joint'
+        ]
+        trajectory.points = trajectory_points
+        # Publish the trajectory
+        self.pub.publish(trajectory)
+        rospy.sleep(0.01)
+
+    def command_path_posicion_articulaciones(self, path, time_between_points, start_time):
+        trajectory_points = []
 
 
-
+        for i, p in enumerate(path):
+          point = JointTrajectoryPoint()
+          point.positions = p
+          point.time_from_start = i*rospy.Duration(time_between_points)+rospy.Duration(start_time)
+          trajectory_points.append(point)
+        
+        # Create the trajectory message
+        trajectory = JointTrajectory()
+        trajectory.header.stamp = rospy.Time.now()
+        trajectory.joint_names = [
+            'shoulder_pan_joint',
+            'shoulder_lift_joint',
+            'elbow_joint', 
+            'wrist_1_joint',
+            'wrist_2_joint',
+            'wrist_3_joint'
+        ]
+        trajectory.points = trajectory_points
+        print(trajectory)
+        # Publish the trajectory
+        self.pub.publish(trajectory)
+        rospy.sleep(time_between_points*len(path)+start_time)
 
 class ConfiguradorSlidersArticulaciones:
     def __init__(self, robot=None, pub_estados_articulaciones=None, nombres_articulaciones=None):
@@ -326,7 +420,7 @@ class ConfiguradorSlidersArticulaciones:
         Inicializa un configurador de sliders para las articulaciones del robot.
 
         Parámetros de entrada:
-        robot: Objeto Robot con las articulaciones y sus límites.
+        robot: Objeto FakeRobot con las articulaciones y sus límites.
         pub_estados_articulaciones: Publicador ROS para enviar los estados de las articulaciones.
         nombres_articulaciones: Nombres de las articulaciones del robot (opcional).
 
@@ -490,7 +584,7 @@ class Cinematica:
         else:
             ok = True
             # Conviere el resultado a una lista
-            for i in range(kdl_result_joint_values.rows()):
+            for i in range(kdl_current_joint_values.rows()):
                 result_joint_values.append(kdl_result_joint_values[i])
                 
         return ok,result_joint_values
@@ -1012,6 +1106,35 @@ class DetectorColisiones:
         
         
         #TODO: Añadir obstaculos al modelo de colisiones
+        for obstaculo in self.obstaculos:
+          if obstaculo.tipo == 'cubo':
+            print("obstaculo")
+            geom_obj = self.crear_objeto_geom(obstaculo)
+            if geom_obj:
+              self.modelo_geom.addGeometryObject(geom_obj)
+              joint_id_obs = self.modelo.addJoint(
+                          0,
+                          pin.JointModelFreeFlyer(),
+                          pin.SE3.Identity(),
+                          joint_name='joint_'+obstaculo.nombre,
+                          max_effort=1000 * np.ones(6),
+                          max_velocity=1000 * np.ones(6),
+                          min_config=np.array([-1, -1, -1, 0., 0., 0., 1.]),
+                          max_config=np.array([1, 1, 1, 0., 0., 0., 1.]))
+
+              com = np.array([0, 0, 0])  
+              moment_inertia = np.diag([
+                      0.0001,
+                      0.0001,
+                      0.0001,
+              ]) 
+
+              self.modelo.appendBodyToJoint(
+              joint_id_obs,
+              pin.Inertia(0, com, moment_inertia),
+              pin.SE3.Identity()
+              )
+            
         
         self.q = pin.neutral(self.modelo)
         print(self.q)
@@ -1028,7 +1151,8 @@ class DetectorColisiones:
         print("wrist3: ", self.modelo_geom.getGeometryId('wrist_3_link_0'))
         print("gripper: ", self.modelo_geom.getGeometryId('gripper'))
         print("suelo: ", self.modelo_geom.getGeometryId('suelo'))
-
+        for obstaculo in self.obstaculos:
+          print(obstaculo.nombre, ": ", self.modelo_geom.getGeometryId(obstaculo.nombre))
         
         for collision_pair in self.modelo_geom.collisionPairs:
         #     print(collision_pair)
@@ -1069,6 +1193,25 @@ class DetectorColisiones:
             if cr.isCollision():
                 return True
         return False
+    
+    def crear_objeto_geom(self, obstaculo):
+        """
+        Crea un objeto GeometryObject basado en la información del obstáculo.
+        """
+        if obstaculo.tipo == 'cubo':
+            pose = obstaculo.pose
+            posicion = np.array(pose[:3])
+            orientacion = pin.Quaternion(pose[3], pose[4], pose[5], pose[6]).toRotationMatrix()
+            # Crear el objeto SE3 para la pose del obstáculo
+            se3_pose = pin.SE3(orientacion, posicion)
+            return pin.GeometryObject(
+                obstaculo.nombre,
+                0,  # Se asocia con el cuerpo base
+                hppfcl.Box(obstaculo.dimensiones[0],obstaculo.dimensiones[1], obstaculo.dimensiones[2]),
+                se3_pose  # Posición inicial neutra
+                )
+        # Añadir otros tipos de obstáculos si es necesario
+        return None
 
 
 class SimulacionGripperFlotante():
@@ -1151,4 +1294,387 @@ class SimulacionGripperFlotante():
     def get_tipo_gripper(self):
       return self.tipo_gripper
     
+
+class SimulacionURGripper():
+    def __init__(self, nombre_gripper_gazebo):
+        self.pose_objeto = None
+        self.nombre_gripper_gazebo = nombre_gripper_gazebo
+        self.tipo_gripper = rospy.get_param('/tipo_gripper')
+        rospy.wait_for_service('/gazebo/get_model_state')
+        self.get_state = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
+        self.nombre_articulaciones_gripper = []
+        self.pub_posicion_articulaciones_gripper_command = None
+        self.posicion_articulaciones_gripper_abierto = []
+
     
+    def obtener_pose_objeto(self, nombre_objeto_gazebo):
+        resp = self.get_state(nombre_objeto_gazebo, 'world')
+        f_objeto_world = PyKDL.Frame()
+        f_objeto_world.p = PyKDL.Vector(resp.pose.position.x, resp.pose.position.y, resp.pose.position.z)
+        f_objeto_world.M = PyKDL.Rotation.Quaternion(resp.pose.orientation.x, resp.pose.orientation.y, resp.pose.orientation.z, resp.pose.orientation.w)
+        
+        self.pose_objeto = f_objeto_world
+        return self.pose_objeto
+    
+    def configurar_gripper(self):
+
+      # Construir la ruta al archivo de configuración basado en el nombre del gripper
+      rospack = rospkg.RosPack()
+      configuracion_gripper = rospack.get_path('manipulacion_pkg') + '/config/grippers/' + self.tipo_gripper + '_hand_config.yaml'
+
+      # Cargar el archivo de configuracion
+      with open(configuracion_gripper, 'r') as file:
+        config = yaml.load(file, Loader=yaml.FullLoader)
+      joint_positions_open =config['joint_positions_open'] 
+      self.posicion_articulaciones_gripper_abierto = list(joint_positions_open.values())
+      topic_pub = config['topic_pub']
+      self.nombre_articulaciones_gripper = config['joint_names']
+      self.pub_posicion_articulaciones_gripper_command = rospy.Publisher(topic_pub, JointTrajectory, queue_size=10)
+      
+    def set_posicion_articulaciones_gripper(self, posicion_articulaciones):    
+      trajectory = JointTrajectory()
+      trajectory.header.stamp = rospy.Time.now()
+      trajectory.joint_names = self.nombre_articulaciones_gripper
+      point = JointTrajectoryPoint()
+      print("Gripper posicion articulaciones: ", posicion_articulaciones)
+      point.positions = posicion_articulaciones
+      point.time_from_start = rospy.Duration(2)
+      trajectory.points = [point]
+      self.pub_posicion_articulaciones_gripper_command.publish(trajectory)
+      rospy.sleep(2)
+      
+
+      
+    def abrir_gripper(self):
+      self.set_posicion_articulaciones_gripper(self.posicion_articulaciones_gripper_abierto)
+    
+    def get_tipo_gripper(self):
+      return self.tipo_gripper
+
+
+
+
+
+class NodeJointSpace:
+    def __init__(self, joint_angles):
+        self.joint_angles = joint_angles
+        self.parent = None
+        self.cost = float('inf')
+
+class RRTConnectJointSpace:
+    def __init__(self, start, goal, joint_limits, expand_dis=1.0, max_iter=500, detector_colisiones=None):
+        self.start = NodeJointSpace(start)
+        self.goal = NodeJointSpace(goal)
+        self.joint_limits = joint_limits
+        self.expand_dis = expand_dis
+        self.max_iter = max_iter
+        self.detector_colisiones = detector_colisiones
+        self.start.cost = 0
+        self.node_list_start = [self.start]
+        self.node_list_goal = [self.goal]
+
+    def plan(self):
+        for iteration in range(self.max_iter):
+            print("Iteration: ", iteration)
+
+            # Extend the start tree towards a random node
+            rnd_node = self.get_random_node(self.goal)
+            new_node_start = self.extend_tree(self.node_list_start, rnd_node)
+            if new_node_start:
+                print("We have a new node in start tree")
+                # Try to connect the goal tree to this new node
+                if self.connect_trees(self.node_list_goal, new_node_start):
+                    print("We have a path")
+                    return self.generate_final_path()
+
+            
+            # Extend the goal tree towards a random node
+            rnd_node = self.get_random_node(self.start)
+            new_node_goal = self.extend_tree(self.node_list_goal, rnd_node)
+            if new_node_goal:
+                # Try to connect the start tree to this new node
+                print("We have a new node in goal tree")
+                if self.connect_trees(self.node_list_start, new_node_goal):
+                    print("We have a path")
+                    return self.generate_final_path()
+            
+            print(self.node_list_start[-1].joint_angles)
+            print("Start tree size: ", len(self.node_list_start))
+            print("Goal tree size: ", len(self.node_list_goal))
+        return None
+
+    def connect_trees(self, tree, node):
+        nearest_node = self.get_nearest_node(tree, node)
+        print("Nearest node: ", nearest_node.joint_angles)
+        new_node = self.steer(nearest_node, node, self.expand_dis)
+        print("New node: ", new_node.joint_angles)
+        if new_node and not self.check_collision(new_node, nearest_node):
+            print("No collision")
+            print("Node: ", node.joint_angles)
+            tree.append(new_node)
+            if np.linalg.norm(np.subtract(new_node.joint_angles, node.joint_angles)) < self.expand_dis:
+                return True
+        return False
+
+    def get_random_node(self, target_node):
+        """
+        Generates a random node within the joint limits or the target node.
+        Args:
+            target_node (NodeJointSpace): The target node (goal or start) to sample occasionally.
+        Returns:
+            NodeJointSpace: The randomly generated node or the target node.
+        """
+        # Define the probability of sampling the target node
+        target_sample_rate = 0.1  # e.g., 10% chance to sample the target node
+
+        if np.random.rand() < target_sample_rate:
+            return target_node
+        else:
+            joint_angles = [np.random.uniform(low, high) for (low, high) in self.joint_limits]
+            return NodeJointSpace(joint_angles)
+
+    def extend_tree(self, tree, node):
+        nearest_node = self.get_nearest_node(tree, node)
+        new_node = self.steer(nearest_node, node, self.expand_dis)
+
+        if new_node and not self.check_collision(new_node, nearest_node):
+            print("Node: ", new_node.joint_angles)  
+            tree.append(new_node)
+            return new_node
+        return None
+
+
+    def get_nearest_node(self, tree, node):
+        distances = [self.get_distance(n, node) for n in tree]
+        nearest_idx = np.argmin(distances)
+        return tree[nearest_idx]
+
+    def steer(self, from_node, to_node, extend_length=float('inf')):
+        direction = np.array(to_node.joint_angles) - np.array(from_node.joint_angles)
+        distance = np.linalg.norm(direction)
+
+        if distance > extend_length:
+            direction = direction / distance
+            new_joint_angles = np.array(from_node.joint_angles) + extend_length * direction
+            new_node = NodeJointSpace(new_joint_angles.tolist())
+            new_node.parent = from_node
+            return new_node
+        return to_node
+
+    def check_collision(self, to_node, from_node):
+        """
+        Checks if the path between two nodes collides with any obstacles.
+        Args:
+            to_node, from_node (NodeJointSpace): Nodes to check the path between.
+        Returns:
+            bool: True if there is a collision, False otherwise.
+        """
+
+        # if DetectorColisiones.hay_colision(self, to_node.joint_angles)
+        # Number of steps for interpolation
+        num_steps = 10  # Adjust this based on desired granularity
+
+        # # Linear interpolation
+        for step in range(1, num_steps + 1):
+            ratio = step / float(num_steps)
+            interpolated_joints = (1 - ratio) * np.array(from_node.joint_angles) + ratio * np.array(to_node.joint_angles)
+            
+            # Check for collision at the interpolated position
+            if self.detector_colisiones.hay_colision(interpolated_joints):
+                return True  # Collision detected
+        if self.detector_colisiones.hay_colision(to_node.joint_angles):
+            return True
+        if self.detector_colisiones.hay_colision(from_node.joint_angles):
+            return True
+        return False  # No collision detect
+
+    def get_distance(self, node1, node2):
+        diff = np.array(node1.joint_angles) - np.array(node2.joint_angles)
+        return np.linalg.norm(diff)
+
+    def generate_final_path(self):
+        # Generate path from start to connection point
+        path_start = []
+        node = self.node_list_start[-1]
+        while node.parent is not None:
+            path_start.append(node.joint_angles)
+            node = node.parent
+        path_start.append(node.joint_angles)  # Add start node
+        path_start.reverse()
+
+        # Generate path from goal to connection point
+        path_goal = []
+        node = self.node_list_goal[-1]
+        while node.parent is not None:
+            path_goal.append(node.joint_angles)
+            node = node.parent
+        path_goal.append(self.node_list_goal[0].joint_angles)
+        return path_start + path_goal  # Combine the paths
+      
+
+class RRTStarJointSpace:
+    def __init__(self, start, goal, joint_limits, expand_dis=1.0, max_iter=500, search_radius=1.5, collision_detector=None):
+        self.start = NodeJointSpace(start)
+        self.start.cost = 0
+        self.goal = NodeJointSpace(goal)
+        self.joint_limits = joint_limits
+        self.expand_dis = expand_dis
+        self.max_iter = max_iter
+        self.search_radius = search_radius
+        self.detector_colisiones = collision_detector
+        self.node_list = [self.start]
+
+    def plan(self):
+        path_to_goal = None  # Initially, no path to goal
+        for i in range(self.max_iter):
+            rnd_node = self.get_random_node(self.goal)
+            nearest_node = self.get_nearest_node(rnd_node)
+            new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
+            if not self.check_collision(new_node, nearest_node):
+                near_nodes = self.find_near_nodes(new_node)
+                new_node = self.choose_parent(near_nodes, new_node)
+                if new_node:
+                    self.node_list.append(new_node)
+                    self.rewire(new_node, near_nodes)
+        # After all iterations, attempt to connect the closest node in the tree to the goal
+        closest_node_to_goal = self.get_nearest_node(self.goal)
+        if self.check_goal_path(closest_node_to_goal):
+            path_to_goal = self.generate_final_path(self.goal)
+        return path_to_goal
+
+    def get_random_node(self, target_node):
+        """
+        Generates a random node within the joint limits or the target node.
+        Args:
+            target_node (NodeJointSpace): The target node (goal or start) to sample occasionally.
+        Returns:
+            NodeJointSpace: The randomly generated node or the target node.
+        """
+        # Define the probability of sampling the target node
+        target_sample_rate = 0.1  # e.g., 10% chance to sample the target node
+
+        if np.random.rand() < target_sample_rate:
+            return target_node
+        else:
+            joint_angles = [np.random.uniform(low, high) for (low, high) in self.joint_limits]
+            return NodeJointSpace(joint_angles)
+
+    def get_nearest_node(self, node):
+        distances = [self.get_distance(n, node) for n in self.node_list]
+        nearest_idx = np.argmin(distances)
+        return self.node_list[nearest_idx]
+
+      
+    def steer(self, from_node, to_node, extend_length=float('inf')):
+        direction = np.array(to_node.joint_angles) - np.array(from_node.joint_angles)
+        distance = np.linalg.norm(direction)
+
+        if distance > extend_length:
+            direction = direction / distance
+            new_joint_angles = np.array(from_node.joint_angles) + extend_length * direction
+            new_node = NodeJointSpace(new_joint_angles.tolist())
+            new_node.parent = from_node
+        else:
+          new_joint_angles = np.array(to_node.joint_angles)
+        # Ensure new_joint_angles are within joint limits
+        for i, (low, high) in enumerate(self.joint_limits):
+            new_joint_angles[i] = np.clip(new_joint_angles[i], low, high)
+
+        new_node = NodeJointSpace(new_joint_angles.tolist())
+        new_node.parent = from_node
+        return new_node
+
+
+
+    def check_collision(self, to_node, from_node):
+        """
+        Checks if the path between two nodes collides with any obstacles.
+        Args:
+            to_node, from_node (NodeJointSpace): Nodes to check the path between.
+        Returns:
+            bool: True if there is a collision, False otherwise.
+        """
+
+        # if DetectorColisiones.hay_colision(self, to_node.joint_angles)
+        # Number of steps for interpolation
+        num_steps = 20  # Adjust this based on desired granularity
+
+        # # Linear interpolation
+        for step in range(1, num_steps + 1):
+            ratio = step / float(num_steps)
+            interpolated_joints = (1 - ratio) * np.array(from_node.joint_angles) + ratio * np.array(to_node.joint_angles)
+            
+            # Check for collision at the interpolated position
+            if self.detector_colisiones.hay_colision(interpolated_joints):
+                return True  # Collision detected
+        if self.detector_colisiones.hay_colision(to_node.joint_angles):
+            return True
+        if self.detector_colisiones.hay_colision(from_node.joint_angles):
+            return True
+        return False  # No collision detect
+
+    def find_near_nodes(self, new_node):
+        n = len(self.node_list) + 1
+        r = min(self.search_radius, (np.log(n) / n)**(1/len(self.joint_limits)))
+        distances = [self.get_distance(node, new_node) for node in self.node_list]
+        near_nodes = [self.node_list[idx] for idx, d in enumerate(distances) if d < r]
+        return near_nodes
+
+    def choose_parent(self, near_nodes, new_node):
+        if not near_nodes:
+            return None
+        costs = []
+        for node in near_nodes:
+            if not self.check_collision(new_node, node):
+                costs.append(node.cost + self.get_distance(node, new_node))
+            else:
+                costs.append(float('inf'))
+        min_cost = min(costs)
+        if min_cost == float('inf'):
+            return None
+        min_cost_idx = costs.index(min_cost)
+        new_node.cost = min_cost
+        new_node.parent = near_nodes[min_cost_idx]
+        return new_node
+
+    def rewire(self, new_node, near_nodes):
+        for node in near_nodes:
+            no_collision = not self.check_collision(node, new_node)
+            improved_cost = new_node.cost + self.get_distance(new_node, node) < node.cost
+            if no_collision and improved_cost:
+                node.parent = new_node
+                node.cost = new_node.cost + self.get_distance(new_node, node)
+
+    def get_distance(self, node1, node2):
+        return np.linalg.norm(np.subtract(node1.joint_angles, node2.joint_angles))
+      
+    def check_goal_path(self, node):
+        # Attempt to directly connect node to goal
+        direct_to_goal = self.steer(node, self.goal)
+        
+        if not self.check_collision(direct_to_goal, node):
+            # Direct path is feasible, update goal node's parent and cost if this path is better
+            direct_cost = node.cost + self.get_distance(node, self.goal)
+            if direct_cost < self.goal.cost or self.goal.parent is None:
+                self.goal.parent = node
+                self.goal.cost = direct_cost
+                return True
+        return False
+
+
+    def generate_final_path(self, goal_node):
+      """
+      Generates the final path from start to goal by tracing back from the goal node.
+      Args:
+          goal_node (NodeJointSpace): The goal node from which to trace back to the start.
+      Returns:
+          list: The sequence of joint angles from start to goal.
+      """
+      path = []
+      current_node = goal_node
+      while current_node.parent is not None:
+          path.append(current_node.joint_angles)
+          current_node = current_node.parent
+      path.append(self.start.joint_angles)  # Don't forget to add the start node at the end
+      path.reverse()  # Reverse the path to start from the beginning
+      return path
