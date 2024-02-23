@@ -2,19 +2,20 @@
 <robot name="caja_simple_robot">
   <!-- Definición del único link con una caja como geometría de colisión y visualización -->
   <link name="link_caja">
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
     <visual>
-      <origin xyz="-0.0 0 0" rpy="0 0 0"/> 
+      <origin xyz="-0.085 0 0" rpy="0 0 0"/> 
       <geometry>
-        <box size="0.3 0.01 0.01"/>
+        <box size="0.21 0.2 0.1"/>
       </geometry>
       <material name="azul">
         <color rgba="0 0 1 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="-0.0 0 0" rpy="0 0 0"/>
+      <origin xyz="-0.085 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.3 0.01 0.01"/>
+        <box size="0.21 0.2 0.1"/>
       </geometry>
     </collision>
     <inertial>
@@ -32,6 +33,6 @@
   <joint name="base_to_caja_joint" type="fixed">
     <parent link="base_link"/>
     <child link="link_caja"/>
-    <origin xyz="-0.0 0 0" rpy="0 0 0"/>
+    <origin xyz="0.0 0 0" rpy="0 0 0"/>
   </joint>
 </robot>
