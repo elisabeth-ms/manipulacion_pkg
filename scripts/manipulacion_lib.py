@@ -965,11 +965,12 @@ class DetectorColisionesGripperFlotante:
             orientacion = pin.Quaternion(pose[3], pose[4], pose[5], pose[6]).toRotationMatrix()
             # Crear el objeto SE3 para la pose del obstáculo
             se3_pose = pin.SE3(orientacion, posicion)
+            
             return pin.GeometryObject(
                 obstaculo.nombre,
                 0,  # Se asocia con el cuerpo base
                 hppfcl.Box(obstaculo.dimensiones[0],obstaculo.dimensiones[1], obstaculo.dimensiones[2]),
-                se3_pose  # Posición inicial neutra
+                se3_pose  
                 )
         # Añadir otros tipos de obstáculos si es necesario
         return None
@@ -1295,7 +1296,7 @@ class SimulacionGripperFlotante():
       return self.tipo_gripper
     
 
-class SimulacionURGripper():
+class SimulacionGripper():
     def __init__(self, nombre_gripper_gazebo):
         self.pose_objeto = None
         self.nombre_gripper_gazebo = nombre_gripper_gazebo
@@ -1331,7 +1332,7 @@ class SimulacionURGripper():
       self.nombre_articulaciones_gripper = config['joint_names']
       self.pub_posicion_articulaciones_gripper_command = rospy.Publisher(topic_pub, JointTrajectory, queue_size=10)
       
-    def set_posicion_articulaciones_gripper(self, posicion_articulaciones):    
+    def set_posicion_articulaciones(self, posicion_articulaciones):    
       trajectory = JointTrajectory()
       trajectory.header.stamp = rospy.Time.now()
       trajectory.joint_names = self.nombre_articulaciones_gripper
@@ -1346,7 +1347,7 @@ class SimulacionURGripper():
 
       
     def abrir_gripper(self):
-      self.set_posicion_articulaciones_gripper(self.posicion_articulaciones_gripper_abierto)
+      self.set_posicion_articulaciones(self.posicion_articulaciones_gripper_abierto)
     
     def get_tipo_gripper(self):
       return self.tipo_gripper

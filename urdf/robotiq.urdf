@@ -3,18 +3,18 @@
   <!-- Definición del único link con una caja como geometría de colisión y visualización -->
   <link name="link_caja">
     <visual>
-      <origin xyz="-0.1 0 0" rpy="0 0 0"/> 
+      <origin xyz="-0.05 0 0" rpy="0 0 0"/> 
       <geometry>
-        <box size="0.26 0.2 0.24"/>
+        <box size="0.26 0.24 0.14"/>
       </geometry>
       <material name="azul">
         <color rgba="0 0 1 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="-0.1 0 0" rpy="0 0 0"/>
+      <origin xyz="-0.05 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.26 0.2 0.24"/>
+        <box size="0.26 0.24 0.14"/>
       </geometry>
     </collision>
     <inertial>
