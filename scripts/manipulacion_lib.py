@@ -35,6 +35,25 @@ from gazebo_msgs.srv import SetModelState, GetModelState
 from gazebo_msgs.msg import ModelState
 import yaml
 
+def esperar_por_subscribers(publisher, timeout=None):
+    """
+    Bloquea hasta que el publicador dado tenga al menos un suscriptor.
+    Parámetros de entrada:
+    - publisher: El publicador de ROS
+    - timeout: Tiempo límite opcional en segundos
+    Return:
+    - True si el publicador tiene suscriptores, False si se agota el tiempo límite
+
+    """
+    if timeout is not None:
+        timeout_time = rospy.get_time() + timeout
+    while publisher.get_num_connections() == 0:
+        if timeout is not None and rospy.get_time() > timeout_time:
+            return False
+        rospy.sleep(0.1)  
+    return True
+
+
 def convert_kdl_frame_to_geometry_pose(kdl_frame):
     # Convert the position (translation) from PyKDL Vector to geometry_msgs/Point
     position = Point()
@@ -1286,6 +1305,7 @@ class SimulacionGripperFlotante():
       point.positions = posicion_articulaciones
       point.time_from_start = rospy.Duration(2)
       trajectory.points = [point]
+      esperar_por_subscribers(self.pub_posicion_articulaciones_command, 2)
       self.pub_posicion_articulaciones_command.publish(trajectory)
       rospy.sleep(2)
       
@@ -1341,6 +1361,7 @@ class SimulacionGripper():
       point.positions = posicion_articulaciones
       point.time_from_start = rospy.Duration(2)
       trajectory.points = [point]
+      esperar_por_subscribers(self.pub_posicion_articulaciones_command, 2)
       self.pub_posicion_articulaciones_gripper_command.publish(trajectory)
       rospy.sleep(2)
       
