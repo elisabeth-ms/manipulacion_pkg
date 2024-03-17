@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 
+  <env name="GAZEBO_MODEL_PATH" value="$(optenv GAZEBO_MODEL_PATH):$(find manipulacion_pkg)/objects_models"/>
 
   <!--Robot description and related parameter files -->
   <arg name="robot_description_file" default="$(find manipulacion_pkg)/urdf/robot.xacro"/>
