@@ -1361,7 +1361,7 @@ class SimulacionGripper():
       point.positions = posicion_articulaciones
       point.time_from_start = rospy.Duration(2)
       trajectory.points = [point]
-      esperar_por_subscribers(self.pub_posicion_articulaciones_command, 2)
+      esperar_por_subscribers(self.pub_posicion_articulaciones_gripper_command, 2)
       self.pub_posicion_articulaciones_gripper_command.publish(trajectory)
       rospy.sleep(2)
       
