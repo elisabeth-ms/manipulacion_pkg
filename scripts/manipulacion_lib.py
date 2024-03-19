@@ -348,6 +348,7 @@ class FakeRobot(Robot):
         estado_articulacion.name = self.nombres_articulaciones
         estado_articulacion.position = posiciones_articulaciones
         self.posiciones_articulaciones = posiciones_articulaciones
+        esperar_por_subscribers(pub_estados_articulaciones, 2)
         pub_estados_articulaciones.publish(estado_articulacion)
 
     def obtener_posiciones_articulaciones(self):
@@ -402,6 +403,7 @@ class GazeboRobot(Robot):
         ]
         trajectory.points = trajectory_points
         # Publish the trajectory
+        esperar_por_subscribers(self.pub, 2)
         self.pub.publish(trajectory)
         rospy.sleep(0.01)
 
@@ -429,6 +431,7 @@ class GazeboRobot(Robot):
         trajectory.points = trajectory_points
         print(trajectory)
         # Publish the trajectory
+        esperar_por_subscribers(self.pub, 2)
         self.pub.publish(trajectory)
         rospy.sleep(time_between_points*len(path)+start_time)
 
@@ -468,6 +471,7 @@ class ConfiguradorSlidersArticulaciones:
         joint_state.header.stamp = rospy.Time.now()
         joint_state.name = self.robot.nombres_articulaciones
         joint_state.position = self.robot.posiciones_articulaciones
+        esperar_por_subscribers(self.pub_estados_articulaciones, 2)
         self.pub_estados_articulaciones.publish(joint_state)
 
     def crear_sliders(self):
@@ -885,6 +889,7 @@ class ConfiguradorSlidersEfectorFinal():
         pose.orientation.z = q[2]
         pose.orientation.w = q[3]
         self.pose_objetivo = pose
+        esperar_por_subscribers(self.pub_marcador_efector_final, 2)
         publicar_marcador(pub_marcador=self.pub_marcador_efector_final, pose_efector_final=pose)
     
     def obtener_pose_sliders(self):
