@@ -19,7 +19,7 @@
         <geometry>
           <mesh>
             <uri>model://bleach_cleanser/meshes/bleach_cleanser.stl</uri>
-            <scale>0.91 0.91 0.91</scale>
+            <scale>0.92 0.92 0.92</scale>
 	        </mesh>
         </geometry>
         <surface>

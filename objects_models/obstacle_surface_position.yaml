@@ -12,7 +12,7 @@ banana:
   position:
     x: -2.0
     y: -2.0
-    z: -0.012
+    z: -0.025
 chips_can:
   position:
     x: -2.0
