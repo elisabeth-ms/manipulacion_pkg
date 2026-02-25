@@ -8,10 +8,10 @@ joint_names:
   - hand_33_thumb_joint
 joint_positions_open:
   hand_11_knuckle_joint: 0.0
-  hand_12_finger_joint: -0.5
-  hand_13_finger_joint: -0.5
-  hand_22_finger_joint: -0.5
-  hand_23_finger_joint: -0.5
-  hand_32_thumb_joint: -0.5
-  hand_33_thumb_joint: -0.5
+  hand_12_finger_joint: -1.0
+  hand_13_finger_joint: -1.0
+  hand_22_finger_joint: -1.0
+  hand_23_finger_joint: -1.0
+  hand_32_thumb_joint: -1.0
+  hand_33_thumb_joint: -1.0
 topic_pub: '/schunk_hand_joint_traj_controller/command'

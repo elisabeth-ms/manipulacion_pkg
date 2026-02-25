@@ -5,14 +5,14 @@
     <link name="link">
       <inertial>       
         <pose>-0.014272485683301438 -0.045728422080814235 0.026772347862895073 -2.626737890129878 -1.5492925649828464 1.5480864653340547</pose> 
-        <mass>3.335824015809766e-05</mass>
+        <mass>1.335824015809766e-02</mass>
         <inertia>
-          <ixx>1.3112180307477242e-07</ixx>
-          <ixy>5.908389121786052e-25</ixy>
-          <ixz>-6.692686523374115e-25</ixz>
-          <iyy>7.919484753160423e-08</iyy>
-          <iyz>1.6708279366247233e-23</iyz>
-          <izz>7.620043698791454e-08</izz>
+          <ixx>1.3112180307477242e-5</ixx>
+          <ixy>5.908389121786052e-18</ixy>
+          <ixz>-6.692686523374115e-18</ixz>
+          <iyy>7.919484753160423e-5</iyy>
+          <iyz>1.6708279366247233e-16</iyz>
+          <izz>7.620043698791454e-5</izz>
         </inertia>
       </inertial>
       <collision name="collision">
@@ -20,7 +20,7 @@
           <mesh>
             <!-- Use a downsampled mesh for collisions -->
             <uri>model://bowl/meshes/nontextured.stl</uri>
-            <scale>1.1 1.1 1.0</scale>
+            <scale>1.0 1.0 1.0</scale>
 	        </mesh>
         </geometry>
         <surface>
@@ -36,7 +36,7 @@
         <geometry>
           <mesh>
             <uri>model://bowl/meshes/nontextured.stl</uri>
-            <scale>1.05 1.05 1.0</scale>
+            <scale>1.0 1.0 1.0</scale>
 	        </mesh>
         </geometry>
         <!-- <material>
