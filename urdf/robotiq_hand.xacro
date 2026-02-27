@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:macro name="robotiq_3f_hand" params="parent mass_divider activate_gravity floating_gripper finger_mass_divider *origin prefix:=robotic-3f">
     <joint name="hand_joint" type="fixed">
@@ -53,8 +54,7 @@
 			<axis xyz="0 1 0"/>
 			<origin xyz="-0.0455 0.0214 -0.036" rpy="0 3.1416 -1.57"/>
 			<limit lower="-0.192" upper="0.1784" effort="100" velocity="10"/>
-      <damping>1</damping>      <damping>1</damping>
-
+      <damping>1</damping>      
 		</joint>
 
 
@@ -194,13 +194,108 @@
                  </arm>
                 <forces_angle_tolerance>100</forces_angle_tolerance>
                 <update_rate>10</update_rate>
-                <grip_count_threshold>2</grip_count_threshold>
+                <grip_count_threshold>3</grip_count_threshold>
                 <max_grip_count>8</max_grip_count>
-                <release_tolerance>0.005</release_tolerance>
+                <release_tolerance>0.01</release_tolerance>
                 <disable_collisions_on_attach>true</disable_collisions_on_attach>
                 <contact_topic>__default_topic__</contact_topic>
              </plugin>
-        </gazebo>
-        
+    </gazebo>
+    <gazebo reference="${prefix}1_finger_middle_link_1">
+        <mu1>1</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>1</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.005</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+    
+    <gazebo reference="${prefix}1_finger_middle_link_2">
+        <mu1>1</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>1</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.005</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+
+    <gazebo reference="${prefix}1_finger_middle_link_3">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+
+    <gazebo reference="${prefix}2_finger_1_link_0">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+    <gazebo reference="${prefix}2_finger_1_link_1">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+
+        <gazebo reference="${prefix}2_finger_1_link_2">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+    <gazebo reference="${prefix}2_finger_1_link_3">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+
+        <gazebo reference="${prefix}3_finger_1_link_0">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+    <gazebo reference="${prefix}3_finger_1_link_1">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+
+    <gazebo reference="${prefix}3_finger_1_link_2">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+
+    <gazebo reference="${prefix}3_finger_1_link_3">
+        <mu1>0.7</mu1> <!-- Coefficient of friction in one direction -->
+        <mu2>0.7</mu2> <!-- Coefficient of friction in the other direction -->
+        <kp>1e5</kp> <!-- Contact stiffness -->
+        <kd>1</kd> <!-- Contact damping -->
+        <minDepth>0.01</minDepth> <!-- Minimum depth before contact is considered -->
+        <maxVel>0.1</maxVel> <!-- Maximum contact velocity -->
+    </gazebo>
+
 	</xacro:macro>
 </robot>
